@@ -1,6 +1,6 @@
 [package]
 name = "ls32-hid-lib"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Dionysis Grigoropoulos <dgrig@erethon.com>"]
 edition = "2018"
 description = "A small library to interface with LS32 based LCD name badges"
