@@ -1,6 +1,6 @@
 [package]
 name = "ls32-hid-lib"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Dionysis Grigoropoulos <dgrig@erethon.com>"]
 edition = "2018"
 description = "A small library to interface with LS32 based LCD name badges"
@@ -9,7 +9,7 @@ readme = "README.org"
 repository = "https://github.com/erethon/ls32-hid-lib"
 
 [dependencies]
-hidapi = '1.1.0'
+hidapi = '1.3.0'
 bincode = '1.2.1'
 serde = { version = "1.0", features = ["derive"] }
 phf = { version = "0.8", features = ["macros"] }

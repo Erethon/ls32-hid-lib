@@ -1,12 +1,12 @@
 mod charset;
-use hidapi::{HidApi, HidDevice, HidResult};
+use hidapi::{HidApi, HidDevice};
 use serde::Serialize;
 use std::convert::TryInto;
 
 const VENDORID: u16 = 0x0416;
 const PRODUCTID: u16 = 0x5020;
 
-#[derive(Serialize, Default)]
+#[derive(Serialize)]
 struct Header {
     preamble: [u8; 5],
     brightness: u8,
@@ -19,21 +19,52 @@ struct Header {
     boundary: [u8; 20],
 }
 
-pub fn open_badge() -> HidResult<HidDevice> {
-    let hid = HidApi::new().unwrap();
-    Ok(hid
-        .open(VENDORID, PRODUCTID)
-        .expect("Failed to open device with VendorID and ProductID"))
+impl Default for Header {
+    fn default() -> Header {
+        Header {
+            preamble: [0x77, 0x61, 0x6e, 0x67, 0x00],
+            brightness: 0x00,
+            blink: 0x00,
+            border: 0x00,
+            mode: [0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+            length: [0; 16],
+            separator: [0; 6],
+            date: [0; 6],
+            boundary: [0; 20],
+        }
+    }
 }
 
-pub fn send_msg(badge: HidDevice, msg: &str, blink: bool, brightness: u8) -> HidResult<usize> {
-    let msg_len: u8 = msg.len().try_into().expect("Message longer than then maximum length of 255 characters");
+pub fn open_badge() -> Result<HidDevice, String> {
+    match HidApi::new() {
+        Ok(hid) => {
+            let devices = hid.device_list();
+            for device in devices {
+                if device.vendor_id() == VENDORID && device.product_id() == PRODUCTID {
+                    match hid.open(VENDORID, PRODUCTID) {
+                        Ok(open_dev) => return Ok(open_dev),
+                        Err(_) => return Err(String::from("Couldn't open HID device")),
+                    }
+                }
+            }
+            Err(format!(
+                "No device found with VendorID: {} and ProductID: {}",
+                VENDORID, PRODUCTID
+            ))
+        }
+        Err(_) => Err(String::from("Couldn't get HID devices")),
+    }
+}
+
+pub fn send_msg(badge: HidDevice, msg: &str, blink: bool, brightness: u8) -> Result<usize, String> {
+    let msg_len: u8 = msg
+        .len()
+        .try_into()
+        .expect("Message longer than then maximum length of 255 characters");
 
     let header = Header {
-        preamble: [0x77, 0x61, 0x6e, 0x67, 0x00],
         brightness,
         blink: if blink { 0xff } else { 0x00 },
-        mode: [0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
         length: [
             0x00, msg_len, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00,
@@ -47,5 +78,8 @@ pub fn send_msg(badge: HidDevice, msg: &str, blink: bool, brightness: u8) -> Hid
             data.push(*byte);
         }
     }
-    badge.write(&data)
+    match badge.write(&data) {
+        Ok(size) => Ok(size),
+        Err(_) => Err(String::from("Failed to write on device")),
+    }
 }
